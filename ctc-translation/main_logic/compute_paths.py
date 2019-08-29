@@ -77,6 +77,8 @@ def prune_tree(current_node, lab_source, lab_dest, destination_reached, source_r
             else:
                 to_delete.append(child)
     for node in to_delete:
+        if not isinstance(current_node, Compound):
+            continue
         current_node.block_items.remove(node)
 
 

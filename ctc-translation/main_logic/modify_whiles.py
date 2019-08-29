@@ -5,11 +5,13 @@ modify_whiles contains the logic which turns receiving while loops into if state
 """
 
 import copy
+import random
 from pycparser import c_generator
 from pycparser.c_ast import *
 from pycparser.plyparser import Coord
 
 from utils.generators import WhileAlgoVisitor
+from utils.utils import find_parentUpdated
 
 
 generator = c_generator.CGenerator()
@@ -56,6 +58,8 @@ def identify_recv_exits(extern_while_body, conditii):
     :param conditii:
     :return:
     """
+    if not isinstance(extern_while_body, Compound):
+        return
     if extern_while_body.block_items:
         for elem in extern_while_body.block_items:
             if isinstance(elem, If):
@@ -214,6 +218,47 @@ def to_modify(while_to_check):
     return recv
 
 
+def wrap_code(extern_while_body, new_if):
+    """
+    For the added ifs, if ERR_ROUND is assigned on a branch, wrap the following code
+    into a condition which avoids ERR_ROUND. Wraps code only from the first compound,
+    which means is not quite ok
+    :param extern_while_body:
+    :param new_if:
+    :return:
+    """
+    global generator
+    p = find_parentUpdated(extern_while_body, new_if)
+
+    if not isinstance(p, Compound):
+        return
+
+    ind = p.block_items.index(new_if)
+
+    if ind < len(p.block_items) - 1:
+        to_comp = p.block_items[ind+1]
+
+        if isinstance(to_comp, If):
+            str1 = generator.visit(new_if.cond)
+            str2 = generator.visit(to_comp.cond)
+
+            if str1 == str2:
+                return
+
+        nodes_list = []
+
+        aux_ind = ind + 1
+        while aux_ind < len(p.block_items):
+            nodes_list.append(p.block_items[aux_ind])
+            del p.block_items[aux_ind]
+
+        new_coord = Coord(new_if.coord.file, -1, -1)
+        add_if_coord = Coord(new_if.coord.file, random.randint(-2, -1) * 1000)
+        add_if = If(new_if.cond, Compound(nodes_list, new_coord), None, add_if_coord)
+
+        p.block_items.append(add_if)
+
+
 def whiles_to_if(extern_while_body, recv_loops, recv_loops_out_internal, syntax_dict, conditions=None):
     """
     modifies the main while loop
@@ -280,6 +325,8 @@ def whiles_to_if(extern_while_body, recv_loops, recv_loops_out_internal, syntax_
                     # recv_loops_out_internal[(element.coord.line, element.coord.column)][0]
                     new_if.iffalse = Compound([func], new_coord)
                     aux_assig = Assignment('=', ID(round_name), ID("ERR_ROUND"), assign_coord)
+
+                    # Fix such as return_from_inner is discovered by find_all_paths
                     new_if.iffalse.block_items.append(aux_assig)
                 else:
                     # Only a quick fix - might be some problems with recv_loops
@@ -292,6 +339,8 @@ def whiles_to_if(extern_while_body, recv_loops, recv_loops_out_internal, syntax_
                 # FuncCall(ID("wait_for_messages", id_coord), None, new_break_coord)
 
                 aux.block_items.insert(i, new_if)
+                # Ensure that the following code is wrapped by a condition which avoids ERR_ROUND
+                # wrap_code(extern_while_body, new_if)
                 if new_if.iftrue:
                     whiles_to_if(new_if.iftrue, recv_loops, recv_loops_out_internal, syntax_dict, conditions)
 
@@ -370,6 +419,7 @@ def whiles_to_if(extern_while_body, recv_loops, recv_loops_out_internal, syntax_
                                                           new_coord)
 
                             element.iftrue.block_items.insert(index, new_if)
+                            # wrap_code(extern_while_body, new_if)
                             if new_if.iftrue:
                                 whiles_to_if(new_if.iftrue, recv_loops, recv_loops_out_internal, syntax_dict, conditions)
 
