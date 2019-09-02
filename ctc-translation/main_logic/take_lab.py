@@ -407,24 +407,20 @@ def remove_dummy_assigs(trees_dict, trees_paths_dict):
                         if p.block_items[ind - 1].name.name == "return_from_inner":
                             del p.block_items[ind]
 
-    # Probably for trees_path_dict should be done as well, but crashes
-    """
     for td in trees_paths_dict.values():
         for aux_td in td:
-            v.result = []
-            aux_td = get_extern_while_body(aux_td)
-            v.visit(aux_td)
+            for comp_tup in aux_td:
+                v.result = []
+                comp = comp_tup[0]
+                v.visit(comp)
 
-            for el in v.result:
-                p = find_parent(aux_td, el)
-                if isinstance(p, Compound):
-                    ind = p.block_items.index(el)
-                    if ind >= 1 and isinstance(p.block_items[ind - 1], FuncCall):
-                        if p.block_items[ind - 1].name.name == "return_from_inner":
-                            del p.block_items[ind]
-
-    return
-    """
+                for el in v.result:
+                    p = find_parent(comp, el)
+                    if isinstance(p, Compound):
+                        ind = p.block_items.index(el)
+                        if ind >= 1 and isinstance(p.block_items[ind - 1], FuncCall):
+                            if p.block_items[ind - 1].name.name == "return_from_inner":
+                                del p.block_items[ind]
 
 
 def modify_cond(cond, new_vals):

@@ -331,7 +331,6 @@ class JumpPhaseVisitor(c_ast.NodeVisitor):
                 self.incr_unary.append(node)
 
 
-
 class WhileAlgoVisitor(c_ast.NodeVisitor):
     """
     With this visitor we return a list of whiles which represent
@@ -813,6 +812,7 @@ class SwitchToOldVars(c_ast.NodeVisitor):
             return
         if isinstance(node.name, ID):
             node.name.name = "old_" + node.name.name
+
 
 class LocateParentNode(c_generator.CGenerator):
     """
@@ -2342,7 +2342,8 @@ class CheckIfGenerator(c_generator.CGenerator):
         if n.lvalue.name == self.label_name:
             self.is_jumping = True
             if not self.source == n and not self.dest == n:
-                self.true_jump = True
+                if isinstance(n.rvalue, ID) and n.rvalue.name != "AUX_ROUND":
+                    self.true_jump = True
         return ''
 
     def visit_FuncCall(self, n):
