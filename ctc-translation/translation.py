@@ -4,7 +4,7 @@ from utils.utils import duplicate_element, find_parent, get_global_vars, get_var
                         get_main_function, get_extern_while_body, get_extern_while
 
 from main_logic.modify_whiles import *
-from main_logic.mbox_removal import remove_mbox
+from main_logic.mbox_removal import remove_mbox, clean_round_assigs
 
 from main_logic.take_lab import get_extern_while_body_from_func, get_paths_trees, \
     turn_nested_algo_marked_compound, print_rounds, get_param_list, turn_send_loops_funcs, syntax_each_algo, \
@@ -138,6 +138,10 @@ while i >= 0:
         # apply_ifs_for_roundjumps(trees_dict, trees_paths_dict, config.msg_structure_fields[i]["round_field"])
         is_job = True
         isolate_jump_phase(trees_dict, trees_paths_dict, i, config.msg_structure_fields)
+
+    # Check if round assigs need to be eliminated
+    if config.delete_round_phase[i]:
+        clean_round_assigs(trees_dict, trees_paths_dict, config.variables[i]["round"])
 
     print_rounds(labs, trees_dict, trees_paths_dict, config.variables[i]['round'], is_job,
                  config.delete_round_phase[i], config.msg_structure_fields[i], config.variables[i], is_upon)

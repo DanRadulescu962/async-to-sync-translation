@@ -220,6 +220,25 @@ class RecvCallVisitor(c_ast.NodeVisitor):
         self.generic_visit(node.stmt)
 
 
+class ExtractRoundVisitor(c_ast.NodeVisitor):
+    """
+    This visitor will extract all assignments of a certain round
+    variable. It will be used for extra cleaning after get_paths_trees
+    """
+    def __init__(self, round_name):
+        self.__result = []
+        self.__round_name = round_name
+
+    @property
+    def result(self):
+        return self.__result
+
+    def visit_Assignment(self, node):
+        if isinstance(node.lvalue, ID):
+            if node.lvalue.name == self.__round_name:
+                self.result.append(node)
+
+
 class AssigRoundVisitor(c_ast.NodeVisitor):
     """
     This visitor checks if a block contains a round assignment

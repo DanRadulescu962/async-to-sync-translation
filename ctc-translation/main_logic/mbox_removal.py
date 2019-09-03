@@ -6,8 +6,8 @@ config file
 """
 from pycparser.c_ast import *
 
-from utils.generators import NullAssignVisitor, UselessFuncVisitor, EmptyInstrVisitor
-from utils.utils import find_parent
+from utils.generators import NullAssignVisitor, UselessFuncVisitor, EmptyInstrVisitor, ExtractRoundVisitor
+from utils.utils import find_parent, get_extern_while_body
 
 
 def remove_mbox_assign_to_zero(extern_while_body, mbox_name):
@@ -88,3 +88,42 @@ def remove_mbox(extern_while_body, mess_names, func_names):
     remove_mbox_assign_to_zero(extern_while_body, mess_names)
     remove_list_dispose(extern_while_body, func_names)
     remove_null_if(extern_while_body)
+
+
+def clean_round_assigs(trees_dict, trees_paths_dict, round_name):
+    """
+    Used to clean round assigs and then eliminate empty ifs
+    :param trees_dict:
+    :param trees_paths_dict:
+    :return:
+    """
+    for _list_ in trees_dict.values():
+        for _ast_ in _list_:
+            body = get_extern_while_body(_ast_)
+            v = ExtractRoundVisitor(round_name)
+            v.visit(body)
+
+            for el in v.result:
+                p = find_parent(body, el)
+                if not isinstance(p, Compound):
+                    continue
+                ind = p.block_items.index(el)
+                del p.block_items[ind]
+
+            remove_null_if(body)
+
+    for td in trees_paths_dict.values():
+        for aux_td in td:
+            for comp_tup in aux_td:
+                v = ExtractRoundVisitor(round_name)
+                comp = comp_tup[0]
+                v.visit(comp)
+
+                for el in v.result:
+                    p = find_parent(comp, el)
+                    if not isinstance(p, Compound):
+                        continue
+                    ind = p.block_items.index(el)
+                    del p.block_items[ind]
+
+                remove_null_if(comp)
